@@ -1,0 +1,6 @@
+x = 5 + 7
+y = 20
+z = "hola mundo"
+func main()
+
+end
