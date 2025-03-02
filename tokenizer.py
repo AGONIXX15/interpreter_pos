@@ -5,7 +5,7 @@ import sys
 
 @dataclass
 class Token:
-    type: str
+    kind: str
     value: str
     line: int
     column: int
@@ -72,7 +72,7 @@ class Tokenizer:
 
     def tokenize(self):
         tokens = []
-        while (token := self.next_token()).type != "EOF":
+        while (token := self.next_token()).kind != "EOF":
             tokens.append(token)
         return tokens
 
@@ -90,3 +90,4 @@ if __name__ == "__main__":
     file_path = args[1]
     tokenizer = Tokenizer(read_file(file_path))
     tokens = tokenizer.tokenize()
+
