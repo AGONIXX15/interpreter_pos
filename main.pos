@@ -1,3 +1,1 @@
-x = 5 + 5 + 2
-saludo = "hola mundo"
-despedida = "adios mundo"
+x = 3 > 5;

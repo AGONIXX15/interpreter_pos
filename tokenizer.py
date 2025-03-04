@@ -18,17 +18,22 @@ TOKEN_REGEX = [
     (r">=", "GREATER_EQUAL"),
     (r"<", "LESS"),
     (r">", "GREATER"),
-    (r"\d+(\.\d*)?", "NUMBER"),
+    (r"and", "AND"),
+    (r"or", "OR"),
+    (r"\d+\.{2}\d+", "DOUBLE_DOT"),
+    (r"-?\d+(\.\d*)?", "NUMBER"),
+    (r"true|false", "BOOLEAN"),
     (r"\".*\"", "STRING"),
     (r"'.*'", "STRING"),
     (r"[a-zA-Z_]\w*", "IDENTIFIER"),
     (r"\+", "PLUS"),
-    (r"-", "MINUS"),
-    (r"\*", "MULTIPLY"),
-    (r"/", "DIVIDE"),
+    (r"-", "DASH"),
+    (r"\*", "STAR"),
+    (r"/", "SLASH"),
     (r"\(", "LPAREN"),
     (r"\)", "RPAREN"),
     (r"=", "ASSIGN"),
+    (r";", "SEMICOLON"),
     (r"\n", "NEWLINE"),
     (r"\s+", "WHITESPACE"),
 ]
@@ -59,7 +64,7 @@ class Tokenizer:
                         self.line += 1
                         start_column: int = self.column
                         self.column = 1
-                        return Token(token_type, value, self.line-1, start_column)
+                        return self.next_token()
                     else:
                         start_column: int = self.column
                         self.column += len(value)
@@ -90,4 +95,5 @@ if __name__ == "__main__":
     file_path = args[1]
     tokenizer = Tokenizer(read_file(file_path))
     tokens = tokenizer.tokenize()
-
+    for token in tokens:
+        print(token)
