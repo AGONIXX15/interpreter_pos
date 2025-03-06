@@ -1,1 +1,9 @@
-x = 3 > 5;
+
+func main(x,y)
+puts("la suma de los numeros es:",x+y);
+end;
+
+
+a = input("ingresa un numero:");
+b = input("ingresa otro numero:");
+main(a,b);

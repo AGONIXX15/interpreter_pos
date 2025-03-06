@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from typing import Callable
 
 
 class BindingPower(Enum):
@@ -7,12 +6,11 @@ class BindingPower(Enum):
     COMMA = auto()
     ASSIGNMENT = auto()
     LOGICAL = auto()
+    UNARY = auto()
     RELATIONAL = auto()
     ADDITIVE = auto()
     MULTIPLICATIVE = auto()
-    UNARY = auto()
+    EXPONENTIAL = auto()
     CALL = auto()
     MEMBER = auto()
     PRIMARY = auto()
-
-

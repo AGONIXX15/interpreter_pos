@@ -20,19 +20,26 @@ TOKEN_REGEX = [
     (r">", "GREATER"),
     (r"and", "AND"),
     (r"or", "OR"),
+    (r"not", "NOT"),
     (r"\d+\.{2}\d+", "DOUBLE_DOT"),
-    (r"-?\d+(\.\d*)?", "NUMBER"),
+    (r"\d+(\.\d*)?", "NUMBER"),
     (r"true|false", "BOOLEAN"),
-    (r"\".*\"", "STRING"),
-    (r"'.*'", "STRING"),
+    (r"\".*?\"", "STRING"),
+    (r"'.*?'", "STRING"),
+    (r",", "COMMA"),
     (r"[a-zA-Z_]\w*", "IDENTIFIER"),
+    (r"\+=", "PLUS_ASSIGN"),
+    (r"-=", "DASH_ASSIGN"),
+    (r"\*=", "STAR_ASSIGN"),
+    (r"/=", "SLASH_ASSIGN"),
+    (r"=", "ASSIGN"),
+    (r"\*\*", "DOUBLE_STAR"),
     (r"\+", "PLUS"),
     (r"-", "DASH"),
     (r"\*", "STAR"),
     (r"/", "SLASH"),
     (r"\(", "LPAREN"),
     (r"\)", "RPAREN"),
-    (r"=", "ASSIGN"),
     (r";", "SEMICOLON"),
     (r"\n", "NEWLINE"),
     (r"\s+", "WHITESPACE"),
@@ -95,5 +102,6 @@ if __name__ == "__main__":
     file_path = args[1]
     tokenizer = Tokenizer(read_file(file_path))
     tokens = tokenizer.tokenize()
+    print(tokens)
     for token in tokens:
-        print(token)
+        print(token.value.__repr__())
