@@ -1,9 +1,6 @@
 
 func main(x,y)
-puts("la suma de los numeros es:",x+y);
+return x + y;
 end;
 
-
-a = input("ingresa un numero:");
-b = input("ingresa otro numero:");
-main(a,b);
+puts(main(3,5));

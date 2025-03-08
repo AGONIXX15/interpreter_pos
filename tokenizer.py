@@ -27,6 +27,7 @@ TOKEN_REGEX = [
     (r"\".*?\"", "STRING"),
     (r"'.*?'", "STRING"),
     (r",", "COMMA"),
+    (r"null", "NULL"),
     (r"[a-zA-Z_]\w*", "IDENTIFIER"),
     (r"\+=", "PLUS_ASSIGN"),
     (r"-=", "DASH_ASSIGN"),
@@ -104,4 +105,4 @@ if __name__ == "__main__":
     tokens = tokenizer.tokenize()
     print(tokens)
     for token in tokens:
-        print(token.value.__repr__())
+        print(token)

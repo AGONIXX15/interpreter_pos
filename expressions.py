@@ -33,6 +33,7 @@ class Variable(Expr):
         self.name = name
 
     def evaluate(self, context):
+        # from pdb import set_trace; set_trace()
         if self.name in context:
             return context[self.name]
         raise NameError(f"Var {self.name} not found")
@@ -52,6 +53,19 @@ class Boolean(Expr):
 
     def __repr__(self):
         return f"Boolean({self.value})"
+
+
+class Null(Expr):
+    __slots__ = ["value"]
+
+    def __init__(self):
+        self.value = None
+
+    def evaluate(self, context):
+        return self.value
+
+    def __repr__(self):
+        return f"Null()"
 
 
 class ListArguments(Expr):
@@ -104,12 +118,29 @@ class FunctionCall(Expr):
     def evaluate(self, context):
         self.local_context = {k: v.evaluate(
             context) for k, v in self.local_context.items()}
-        self.local_context = self.local_context | context
+        self.local_context = {**self.local_context, **context}
         for expr in self.body:
+            if isinstance(expr, Return):
+                # from pdb import set_trace; set_trace()
+                return expr.evaluate(self.local_context)
             expr.evaluate(self.local_context)
+        # need to return the value of the function
 
     def __repr__(self) -> str:
         return f"FunctionCall(name={self.name},{self.local_context} ,args={self.args}, body={self.body})"
+
+
+class Return(Expr):
+    __slots__ = ["value"]
+
+    def __init__(self, value: Expr):
+        self.value: Expr = value
+
+    def evaluate(self, context):
+        return self.value.evaluate(context)
+
+    def __repr__(self) -> str:
+        return f"Return({self.value})"
 
 
 class BuiltinFunction(Expr):
@@ -129,6 +160,52 @@ class BuiltinFunction(Expr):
 
     def __repr__(self) -> str:
         return f"BuiltinFunction(value={self.value},function={self.function}, args={self.args})"
+
+
+class If(Expr):
+    __slots__ = ["condition", "body", "else_body"]
+
+    def __init__(self, conditions: list[Expr], body: list[list[Expr]], else_body: list[Expr]):
+        self.conditions: list[Expr] = conditions
+        self.body: list[list[Expr]] = body
+        self.else_body: list[Expr] = else_body
+
+    def evaluate(self, context):
+        # from pdb import set_trace; set_trace()
+        boolean = False
+        for index, condition in enumerate(self.conditions):
+            if condition.evaluate(context):
+                for expr in self.body[index]:
+                    if isinstance(expr, Return):
+                        return expr.evaluate(context)
+                    expr.evaluate(context)
+                boolean = True
+                break
+        if boolean:
+            return
+
+        if self.else_body is []:
+            return
+        for expr in self.else_body:
+            if isinstance(expr, Return):
+                return expr.evaluate(context)
+            expr.evaluate(context)
+
+
+class While(Expr):
+    __slots__ = ["condition", "body"]
+
+    def __init__(self, condition: Expr, body: list[Expr]):
+        self.condition = condition
+        self.body = body
+
+    def evaluate(self, context):
+        while self.condition.evaluate(context):
+            for expr in self.body:
+                expr.evaluate(context)
+
+    def __repr__(self):
+        return f"While(condition={self.condition}, body={self.body})"
 
 
 class Assignment(Expr):
@@ -220,4 +297,4 @@ class BinOp(Expr):
 
 
 if __name__ == "__main__":
-    expression = BinOp(Number(3), "+", BinOp(Number(5), "-", Number(2)))
+    pass

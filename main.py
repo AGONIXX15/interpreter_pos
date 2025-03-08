@@ -25,6 +25,7 @@ def run_file(files: list[str], options=None):
             for stmt in ast:
                 print(stmt)
             print(global_context)
+            print(ast)
 
             print("this is the vars of my program")
             for name, value in global_context.items():

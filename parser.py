@@ -6,7 +6,8 @@ from typing import Callable
 from builtins_po import builtin_func, make_builtin_func
 
 from expressions import BinOp, BuiltinFunction, ListArguments, Number, Assignment, \
-    Variable, Expr, String, Boolean, UnaryOp, Function, BuiltinFunction, FunctionCall
+    Variable, Expr, String, Boolean, UnaryOp, Function, BuiltinFunction, FunctionCall, \
+    Return, Null, If, While
 
 
 bp_lu = {}
@@ -16,6 +17,7 @@ stmt_lu = {}
 
 global_context = {}
 global_functions = {}
+keywords = ["return", "func", "if", "elif", "else", "while"]
 
 
 class Parser:
@@ -35,63 +37,122 @@ class Parser:
         return (self.pos < len(self.tokens) and
                 self.current_token().kind != "EOF")
 
-    def advance(self):
+    def advance(self, context):
         self.pos += 1
 
     def parse_primary_expr(self, context):
         token: Token = self.current_token()
 
         if token.kind == "NUMBER":
-            self.advance()
+            self.advance(context)
             return Number(float(token.value))
         elif token.kind == "IDENTIFIER":
             # palabra reservada
             # function made by me
             # functions that the user defines
             # check if the identifier is a function
-            if builtin_func.get(token.value, None) is not None:
+            if token.value in keywords:
+                return self.parse_keywords(token.value, context)
+
+            elif builtin_func.get(token.value, None) is not None:
                 # from pdb import set_trace; set_trace()
-                self.advance()  # consume puts
+                self.advance(context)  # consume puts
                 args = self.parse_list_arguments(context)
                 return self.call_function(token.value, args, global_context)
             elif global_functions.get(token.value, None) is not None:
-                self.advance()
+                # from pdb import set_trace; set_trace()
+                self.advance(context)
                 args = self.parse_list_arguments(context)
                 return self.call_function(token.value, args, global_context)
-            elif token.value == "func":
-                self.advance()
-                return self.parse_function(context)
 
-            self.advance()
+            self.advance(context)
             return Variable(token.value)
         elif token.kind == "STRING":
-            self.advance()
+            self.advance(context)
             return String(token.value[1:-1])
         elif token.kind == "BOOLEAN":
-            self.advance()
+            self.advance(context)
             return Boolean(token.value == "true")
+        elif token.kind == "NULL":
+            self.advance(context)
+            return Null()
         elif token.kind == "LPAREN":
-            self.advance()
+            self.advance(context)
             expr = self.parse_expr(BindingPower.DEFAULT.value, context)
-            if self.current_token_kind() != "RPAREN":
-                raise SyntaxError(f"Expected close paren )")
-            self.advance()  # consume ")"
+            self.expect("RPAREN")
             return expr
         else:
             raise SyntaxError(f"Unexpected token {token}")
 
-    def check_keywords(self, name: str):
-        pass
+    def parse_keywords(self, name: str, context):
+        if name == "func":
+            self.advance(context)  # consume "func"
+            token = self.current_token()
+            global_functions[token.value] = Function(
+                token.value, ListArguments([]), [])
+            global_functions[token.value] = self.parse_function(context)
+            return global_functions[token.value]
+        elif name == "return":
+            self.advance(context)  # consume "return"
+            try:
+                return Return(self.parse_expr(BindingPower.DEFAULT.value, context))
+            except SyntaxError as e:
+                return Return(Null())
+        elif name == "if":
+            return self.parse_if(context)
+        elif name == "while":
+            return self.parse_while(context)
+
+    def parse_if(self, context):
+        self.advance(context)  # consume "if"
+        self.expect("LPAREN")
+        conditions = [self.parse_expr(BindingPower.DEFAULT.value, context)]
+        self.expect("RPAREN")
+        stmts: list[list[Expr]] = [[]]
+        else_body = []
+        index = 0
+        while self.has_more_tokens() and self.current_token().value != "end":
+            if self.current_token().value == "else":
+                self.advance(context)  # consume "else"
+                while self.has_more_tokens() and self.current_token().value != "end":
+                    else_body.append(self.parse_stmt(context))
+                break
+            if self.current_token().value == "elif":
+                self.advance(context)
+                self.expect("LPAREN")
+                conditions.append(
+                    self.parse_expr(BindingPower.DEFAULT.value, context))
+                self.expect("RPAREN")
+                stmts.append([])
+                index += 1
+            stmts[index].append(self.parse_stmt(context))
+        self.advance(context)  # consume "end"
+        return If(conditions, stmts, else_body)
+
+    def parse_while(self, context):
+        self.advance(context)  # consume while
+        self.expect("LPAREN")
+        condition = self.parse_expr(BindingPower.DEFAULT.value, context)
+        self.expect("RPAREN")
+        body = []
+        while self.has_more_tokens() and self.current_token().value != "end":
+            body.append(self.parse_stmt(context))
+        self.advance(context)  # consume "end"
+        return While(condition, body)
 
     def parse_function(self, context):
-        token = self.current_token()
+        token = self.current_token()  # func.name
         name = token.value
-        self.advance()
-        args = self.parse_list_arguments(context)
+        self.advance(context)  # consume name
+        args = self.parse_list_arguments(context)  # consume args(a,b,c)
+        global_functions[name].args = args
         stmts = []
         while self.has_more_tokens() and self.current_token().value != "end":
-            stmts.append(self.parse_stmt(context))
-        self.advance()
+            stmt = self.parse_stmt(context)
+            global_functions[name].body.append(stmt)
+            stmts.append(stmt)
+
+        self.advance(context)
         function = Function(name, args, stmts)
         global_functions[name] = function
         return function
@@ -112,7 +173,7 @@ class Parser:
             for var_name, value in zip(function.local_context.keys(), args):
                 local_context[var_name] = value
 
-            return FunctionCall(name, args, function.body, local_context)
+            return FunctionCall(name, args, function.body, {**local_context, **global_functions})
         else:
             raise NameError(f"Function {name} not found")
 
@@ -122,13 +183,13 @@ class Parser:
         while self.current_token_kind() != "RPAREN":
             args.append(self.parse_expr(BindingPower.DEFAULT.value, context))
             if self.current_token_kind() == "COMMA":
-                self.advance()
+                self.advance(context)
         self.expect("RPAREN")
         return ListArguments(args)
 
     def parse_binary_expr(self, left: Expr, bp: int, context):
         op_token = self.current_token()
-        self.advance()
+        self.advance(context)
         right = self.parse_expr(bp_lu[op_token.kind], context)
         return BinOp(left, op_token.value, right)
 
@@ -140,7 +201,7 @@ class Parser:
         expression = self.parse_expr(BindingPower.DEFAULT.value, context)
         # expect semicolon at the end of the statement
         self.expect("SEMICOLON")
-        return ExpressionStmt(expression)
+        return expression
 
     def parse_expr(self, bp: int, context: dict):
         # from pdb import set_trace; set_trace()
@@ -160,7 +221,7 @@ class Parser:
 
     def parse_unary_expr(self, context):
         token = self.current_token()
-        self.advance()  # consume "-" or "not"
+        self.advance(context)  # consume "-" or "not"
         right = self.parse_expr(BindingPower.UNARY.value, context)
         return UnaryOp(token.value, right)
 
@@ -181,7 +242,7 @@ class Parser:
             raise SyntaxError(f"Expected variable")
         # from pdb import set_trace; set_trace()
         token = self.current_token()  # assignment
-        self.advance()
+        self.advance(context)
         right = self.parse_expr(bp, context)
         return Assignment(left.name, token.value, right)
 
@@ -226,6 +287,7 @@ class Parser:
         # delimiters
         self.nud("LPAREN", BindingPower.DEFAULT.value, self.parse_primary_expr)
         self.nud("RPAREN", BindingPower.DEFAULT.value, self.advance)
+        self.nud("NULL", BindingPower.DEFAULT.value, self.parse_primary_expr)
 
         self.led("ASSIGN", BindingPower.ASSIGNMENT.value, self.assignment_led)
         self.led("PLUS_ASSIGN", BindingPower.ASSIGNMENT.value,
@@ -244,7 +306,7 @@ class Parser:
                 error = f"got {token} expected {expected_kind}"
             raise SyntaxError(error)
 
-        self.advance()
+        self.advance(global_context)
 
     def expect(self, expected_kind: str):
         self.expect_error(expected_kind, None)
@@ -271,5 +333,12 @@ if __name__ == "__main__":
     global_context: dict = {}
     ast: list[ExpressionStmt] = parser.parse(global_context)
     print(global_context)
+    for stmt in ast:
+        print(stmt)
+    global_context: dict = {}
+    ast: list[ExpressionStmt] = parser.parse(global_context)
+    print(global_context)
+    for stmt in ast:
+        print(stmt)
     for stmt in ast:
         print(stmt)
